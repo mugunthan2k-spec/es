@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Eco Sudar – Smart Attendance</title>
+
+  <style>
+    :root{
+      --green:#1aa15f;
+      --red:#e53935;
+      --dark:#111827;
+      --muted:#6b7280;
+      --bg:#ffffff;
+      --card:#ffffff;
+      --line:#e5e7eb;
+      --shadow: 0 10px 30px rgba(0,0,0,.10);
+      --radius:18px;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    body{
+      margin:0; background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(229,57,53,.16), transparent 60%),
+        radial-gradient(900px 600px at 90% 0%, rgba(26,161,95,.16), transparent 55%),
+        #fff;
+      color:var(--dark);
+    }
+    .wrap{max-width:980px;margin:20px auto;padding:14px}
+    .top{
+      display:flex;gap:12px;align-items:center;justify-content:space-between;
+      background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:14px;
+    }
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:56px;height:56px;border-radius:14px;object-fit:contain;border:1px solid var(--line);
+      background:#fff;padding:6px;
+    }
+    h1{font-size:18px;margin:0}
+    .sub{margin:3px 0 0;color:var(--muted);font-size:13px}
+    .tabs{display:flex;gap:10px}
+    .btn{
+      border:1px solid var(--line);background:#fff;color:var(--dark);
+      padding:10px 14px;border-radius:14px;font-weight:800;cursor:pointer;
+      display:flex;align-items:center;gap:8px;
+      box-shadow:0 6px 18px rgba(0,0,0,.06);
+    }
+    .btn.primary{background:linear-gradient(90deg,var(--green),#0f8a4e);color:#fff;border:0}
+    .btn.danger{background:linear-gradient(90deg,var(--red),#c62828);color:#fff;border:0}
+    .btn:active{transform:translateY(1px)}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+    .card{
+      background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:14px;
+    }
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .pill{padding:8px 12px;border-radius:999px;background:#fff;border:1px solid var(--line);font-weight:800}
+    .status{margin-top:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:#fff}
+    .status.ok{border-color:rgba(26,161,95,.35);background:rgba(26,161,95,.08)}
+    .status.bad{border-color:rgba(229,57,53,.35);background:rgba(229,57,53,.08)}
+    .status .big{font-weight:900}
+    video{
+      width:100%;border-radius:16px;border:1px solid var(--line);background:#000;
+      max-height:420px;object-fit:cover;
+    }
+    .hint{color:var(--muted);font-size:13px;margin-top:8px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid var(--line);padding:10px 8px;font-size:13px;text-align:left;vertical-align:top}
+    th{color:var(--muted);font-weight:900}
+    .thumb{width:56px;height:56px;border-radius:12px;object-fit:cover;border:1px solid var(--line)}
+    .hidden{display:none !important}
+    .right{margin-left:auto}
+    .inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    select,input{
+      width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:14px;font-weight:800;
+    }
+    @media (max-width:720px){ .inputs{grid-template-columns:1fr} }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <img class="logo" src="logo.png" alt="Eco Sudar logo">
+        <div>
+          <h1>Eco Sudar – Smart Attendance</h1>
+          <div class="sub">Mobile kiosk attendance (QR + selfie capture). Reports viewable on any device.</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="btn primary" id="tabScan">📷 Scan Mode</button>
+        <button class="btn danger" id="tabAdmin">📊 Admin Mode</button>
+      </div>
+    </div>
+
+    <!-- SCAN MODE -->
+    <div class="grid" id="scanView">
+      <div class="card">
+        <div class="row">
+          <span class="pill">Selfie camera + QR scan</span>
+          <span class="pill">Beep + Photo</span>
+          <span class="pill right" id="camState">Camera: OFF</span>
+        </div>
+
+        <div style="margin-top:10px" class="row">
+          <button class="btn primary" id="btnStart">▶ Start Camera</button>
+          <button class="btn" id="btnIn">✅ Mark IN</button>
+          <button class="btn danger" id="btnOut">🚪 Mark OUT</button>
+          <button class="btn" id="btnStop">⏹ Stop Camera</button>
+        </div>
+
+        <div class="hint">
+          Keep the phone fixed. Employees scan QR in selfie camera. After scan: 1 beep → selfie captured → upload → 2 beeps + message.
+          Scanner stays ON until you press Stop Camera or close the page.
+        </div>
+
+        <div style="margin-top:12px">
+          <video id="video" playsinline muted></video>
+          <canvas id="snap" class="hidden"></canvas>
+        </div>
+
+        <div id="scanStatus" class="status">
+          <div class="big">Ready</div>
+          <div id="scanMsg" class="sub">Press Start Camera. Then press IN or OUT and show QR.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <span class="pill">Today Logs</span>
+          <button class="btn right" id="btnClearLocal">🧹 Clear Local Table</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Employee</th>
+              <th>Action</th>
+              <th>Photo</th>
+            </tr>
+          </thead>
+          <tbody id="todayBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADMIN MODE -->
+    <div class="grid hidden" id="adminView">
+      <div class="card">
+        <div class="row">
+          <span class="pill">Monthly Report (includes photos)</span>
+          <span class="pill right">PIN: 7274</span>
+        </div>
+
+        <div class="inputs">
+          <input id="pin" type="password" placeholder="Enter PIN (7274)" />
+          <div></div>
+          <select id="year"></select>
+          <select id="month"></select>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <button class="btn danger" id="btnLoad">Load Monthly Report</button>
+          <button class="btn" id="btnExport">Export CSV</button>
+        </div>
+
+        <div id="repStatus" class="status">
+          <div class="big">Report</div>
+          <div id="repMsg" class="sub">Select month/year and load.</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Employee</th>
+              <th>Action</th>
+              <th>IN</th>
+              <th>OUT</th>
+              <th>Hrs</th>
+              <th>Photo</th>
+            </tr>
+          </thead>
+          <tbody id="repBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR scanner library -->
+  <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+
+  <script>
+    // ✅ Your deployed Apps Script Web App URL (already tested with ?action=ping)
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby7BB803v2AsaaWC3auzSpWZ3F2Ten8LrGcLAYGlwFrUdykaIRC2aY8zd9QWwNFFVuVJw/exec";
+
+    // Tabs
+    const scanView = document.getElementById("scanView");
+    const adminView = document.getElementById("adminView");
+    document.getElementById("tabScan").onclick = ()=>{ scanView.classList.remove("hidden"); adminView.classList.add("hidden"); };
+    document.getElementById("tabAdmin").onclick = ()=>{ scanView.classList.add("hidden"); adminView.classList.remove("hidden"); };
+
+    // Scan elements
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("snap");
+    const camState = document.getElementById("camState");
+    const scanStatus = document.getElementById("scanStatus");
+    const scanMsg = document.getElementById("scanMsg");
+    const todayBody = document.getElementById("todayBody");
+
+    let stream = null;
+    let scanning = false;
+    let desiredAction = "IN";
+    let lock = false;
+
+    function setStatus(ok, title, msg){
+      scanStatus.className = "status " + (ok ? "ok" : "bad");
+      scanStatus.querySelector(".big").textContent = title;
+      scanMsg.textContent = msg;
+    }
+
+    // Beep: 1 beep on QR found, 2 beeps on success
+    function beep(times=1){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = 880;
+        o.connect(g); g.connect(ctx.destination);
+
+        let t = ctx.currentTime;
+        for(let i=0;i<times;i++){
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.25, t+0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t+0.12);
+          t += 0.18;
+        }
+        o.start();
+        o.stop(t);
+        o.onended = ()=>ctx.close();
+      }catch(e){}
+    }
+
+    async function startCamera(){
+      try{
+        // Use selfie camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: {ideal: 1280}, height: {ideal: 720} },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+        camState.textContent = "Camera: ON";
+        scanning = true;
+        setStatus(true, "Scanning…", "Show QR. After decode → selfie capture → upload → success.");
+        scanLoop();
+      }catch(err){
+        camState.textContent = "Camera: OFF";
+        setStatus(false, "Camera blocked", "Allow camera permission in browser settings and reload.");
+      }
+    }
+
+    function stopCamera(){
+      scanning = false;
+      lock = false;
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      camState.textContent = "Camera: OFF";
+      setStatus(true, "Stopped", "Press Start Camera to begin again.");
+    }
+
+    document.getElementById("btnStart").onclick = startCamera;
+    document.getElementById("btnStop").onclick = stopCamera;
+
+    document.getElementById("btnIn").onclick = ()=>{
+      desiredAction = "IN";
+      setStatus(true, "IN mode", "Show QR to mark IN. Camera keeps scanning.");
+    };
+    document.getElementById("btnOut").onclick = ()=>{
+      desiredAction = "OUT";
+      setStatus(true, "OUT mode", "Show QR to mark OUT. Thank you message after success.");
+    };
+
+    document.getElementById("btnClearLocal").onclick = ()=>{
+      todayBody.innerHTML = "";
+    };
+
+    function grabSelfieDataURL(){
+      const w = video.videoWidth || 640;
+      const h = video.videoHeight || 480;
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, w, h);
+      return canvas.toDataURL("image/jpeg", 0.78);
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function addTodayRow(name, action, photoUrl){
+      const t = new Date();
+      const timeStr = t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${timeStr}</td>
+        <td><b>${escapeHtml(name)}</b></td>
+        <td>${action}</td>
+        <td>${photoUrl ? <a href="${photoUrl}" target="_blank"><img class="thumb" src="${photoUrl}"></a> : "-"}</td>
+      `;
+      todayBody.prepend(tr);
+    }
+
+    async function sendLog(name, action, photoBase64){
+      const payload = { name, type: action, ts: new Date().toISOString(), photoBase64 };
+      const res = await fetch(${WEB_APP_URL}?action=log, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    }
+
+    // QR decode loop via jsQR
+    async function scanLoop(){
+      if(!scanning) return;
+
+      try{
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, w, h);
+
+        const img = ctx.getImageData(0,0,w,h);
+        const code = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
+
+        if(code && code.data && !lock){
+          lock = true;
+
+          const name = String(code.data).trim();
+          if(!name){ lock = false; }
+          else{
+            beep(1);
+            setStatus(true, "Scanned", ${name} → Capturing selfie & uploading…);
+
+            const selfie = grabSelfieDataURL();
+
+            let resp;
+            try{
+              resp = await sendLog(name, desiredAction, selfie);
+            }catch(e){
+              resp = { ok:false, error:"Network error. Check Apps Script deployment (Anyone)." };
+            }
+
+            if(resp.ok){
+              beep(2);
+              const msg = (desiredAction === "OUT") ? "Thank you!" : "Scanned successfully";
+              setStatus(true, msg, ${name} marked ${desiredAction}.);
+              addTodayRow(name, desiredAction, resp.photoUrl || "");
+              setTimeout(()=>{ lock = false; }, 650); // ready for next person
+            }else{
+              setStatus(false, "Failed", resp.error || "Upload failed. Ensure Apps Script access = Anyone.");
+              setTimeout(()=>{ lock = false; }, 1200);
+            }
+          }
+        }
+      }catch(e){}
+
+      requestAnimationFrame(scanLoop);
+    }
+
+    // ADMIN REPORT
+    const yearSel = document.getElementById("year");
+    const monthSel = document.getElementById("month");
+    const repStatus = document.getElementById("repStatus");
+    const repMsg = document.getElementById("repMsg");
+    const repBody = document.getElementById("repBody");
+
+    function repSet(ok, title, msg){
+      repStatus.className = "status " + (ok ? "ok" : "bad");
+      repStatus.querySelector(".big").textContent = title;
+      repMsg.textContent = msg;
+    }
+
+    function fillYM(){
+      const now = new Date();
+      const y = now.getFullYear();
+      for(let i=y-2;i<=y+1;i++){
+        const o=document.createElement("option");
+        o.value=i; o.textContent=i;
+        if(i===y) o.selected=true;
+        yearSel.appendChild(o);
+      }
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const m = now.getMonth()+1;
+      for(let i=1;i<=12;i++){
+        const o=document.createElement("option");
+        o.value=i; o.textContent = String(i).padStart(2,"0")+" - "+months[i-1];
+        if(i===m) o.selected=true;
+        monthSel.appendChild(o);
+      }
+    }
+    fillYM();
+
+    async function loadReport(){
+      if(document.getElementById("pin").value !== "7274"){
+        repSet(false, "Denied", "Wrong PIN.");
+        return;
+      }
+      const year = yearSel.value;
+      const month = monthSel.value;
+
+      repSet(true, "Loading…", "Fetching from Google Sheets…");
+      repBody.innerHTML = "";
+
+      try{
+        const res = await fetch(${WEB_APP_URL}?action=report&year=${encodeURIComponent(year)}&month=${encodeURIComponent(month)});
+        const data = await res.json();
+
+        if(!data.ok){
+          repSet(false, "Failed", data.error || "Could not load report. Ensure Apps Script access = Anyone.");
+          return;
+        }
+
+        const rows = data.rows || [];
+        if(rows.length===0){
+          repSet(true, "No data", "No logs found for this month.");
+          return;
+        }
+
+        repSet(true, "Loaded", Rows: ${rows.length});
+
+        for(const r of rows){
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${escapeHtml(r.date || "")}</td>
+            <td><b>${escapeHtml(r.employee || "")}</b></td>
+            <td>${escapeHtml(r.action || "")}</td>
+            <td>${escapeHtml(r.inTime || "")}</td>
+            <td>${escapeHtml(r.outTime || "")}</td>
+            <td>${escapeHtml(r.hrs || "")}</td>
+            <td>${r.photoUrl ? <a href="${r.photoUrl}" target="_blank"><img class="thumb" src="${r.photoUrl}"></a> : "-"}</td>
+          `;
+          repBody.appendChild(tr);
+        }
+      }catch(e){
+        repSet(false, "Failed", "Network/CORS error. Re-deploy Apps Script as Anyone.");
+      }
+    }
+
+    document.getElementById("btnLoad").onclick = loadReport;
+
+    document.getElementById("btnExport").onclick = ()=>{
+      const rows = [];
+      rows.push(["Date","Employee","Action","IN","OUT","Hrs","PhotoURL"]);
+
+      [...repBody.querySelectorAll("tr")].forEach(tr=>{
+        const tds = [...tr.querySelectorAll("td")];
+        const photoA = tds[6]?.querySelector("a");
+        rows.push([
+          tds[0]?.innerText||"",
+          tds[1]?.innerText||"",
+          tds[2]?.innerText||"",
+          tds[3]?.innerText||"",
+          tds[4]?.innerText||"",
+          tds[5]?.innerText||"",
+          photoA ? photoA.href : ""
+        ]);
+      });
+
+      const csv = rows.map(r=>r.map(v=> "${String(v).replace(/"/g,'""')}").join(",")).join("\n");
+      const blob = new Blob([csv], {type:"text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "EcoSudar_MonthlyReport.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    // Optional ping check
+    (async ()=>{
+      try{ await fetch(${WEB_APP_URL}?action=ping); }catch(e){}
+    })();
+  </script>
+</body>
+</html>
